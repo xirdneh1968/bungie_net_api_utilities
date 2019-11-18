@@ -5,7 +5,7 @@
 #   https://github.com/DestinyItemManager/DIM/blob/master/docs/COMMUNITY_CURATIONS.md
 # For details on DIM:
 #   https://www.destinyitemmanager.com/
-# Consider supporting the DIM develoment effort:
+# Consider supporting the DIM development effort:
 #   https://opencollective.com/dim?utm_campaign=dim&utm_medium=github&utm_source=opencollective#about_us
 
 from functools import lru_cache
