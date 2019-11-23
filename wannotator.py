@@ -29,6 +29,7 @@ def hash_to_name(hash_val):
 
     special = False
     trash = False
+    entity_param = ''
 
 #    print('DEBUG hash_to_name:', hash_val)
 
@@ -37,9 +38,14 @@ def hash_to_name(hash_val):
             special = True
         trash = True
         hash_val = str(abs(int(hash_val)))
+        entity_param = 'DestinyInventoryItemDefinition'
+    elif (0 <= int(hash_val) <= 58):
+        entity_param = 'DestinyItemCategoryDefinition'
+    else:
+        entity_param = 'DestinyInventoryItemDefinition'
        
     if (not special):   
-        item_call = bungie_net_api.get_item_by_hash(entity_type = 'DestinyInventoryItemDefinition'
+        item_call = bungie_net_api.get_item_by_hash(entity_type = entity_param
                       , hash_identifier = hash_val)
 #        print(json.dumps(item_call['Response'], indent=4, sort_keys=True))
         try:
@@ -77,57 +83,48 @@ def main():
             perk_names = []
             perk_str = ''
             perk_val_str = ''
-#            name_str = ''
-#            name_str = name_str + item_name
             if (re.match(".*#notes:.*", other)):
                 (perks, notes) = other.split('#notes:', 2)
                 perks = list(perks.split('perks=', 2)[1].split(','))
-                for p in perks:
-                    pn = hash_to_name(p)
-                    perk_names.append(pn)
-                    perk_val_str = perk_val_str + '_' + p
-                for n in perk_names:
-                    perk_str = perk_str + ',' + n
-                perk_str = '&perks=' + perk_str.lstrip(',')
+            else:
+                perks = list(other.split('perks=', 2)[1].split(','))
 
-#                item_hash_perks=hash_val + '-' + perk_val_str
-#                uniq_item[item_hash_perks] += 1;
-                item_hash_perks=item_name + perk_str
-                uniq_item[item_hash_perks] += 1;
+            for p in perks:
+                pn = hash_to_name(p)
+                perk_names.append(pn)
+                perk_val_str = perk_val_str + '_' + p
+            for n in perk_names:
+                perk_str = perk_str + ',' + n
+            perk_str = '&perks=' + perk_str.lstrip(',') 
 
-                if (uniq_item[item_hash_perks] > 1):
-                    print('// [duplicate] dimwishlist:item={0:s}{1:s}#notes:{2:s}'.format(item_name, perk_str, notes))
-                    print('// [duplicate] dimwishlist:item={0:s}&{1:s}{2:s}'.format(hash_val, other, notes))
+#            item_perks_hash=item_name + perk_str
+            # item_perks_hash needs to be built based on numerical item and perk values to accomodate multiple versions
+            # of same item such as fixed roll / random roll
+            item_perks_hash=hash_val + perk_val_str
+            uniq_item[item_perks_hash] += 1;  
+
+            if (re.match(".*#notes:.*", other)):
+                if (uniq_item[item_perks_hash] > 1):
+                    print('// [duplicate {3:d}] dimwishlist:item={0:s}{1:s}#notes:{2:s}'.format(item_name, perk_str, notes, uniq_item[item_perks_hash]))
+                    print('// [duplicate {3:d}] dimwishlist:item={0:s}&{1:s}{2:s}'.format(hash_val, other, notes, uniq_item[item_perks_hash]))
                 else:
                     print('// dimwishlist:item={0:s}{1:s}#notes:{2:s}'.format(item_name, perk_str, notes))
                     print('dimwishlist:item={0:s}&{1:s}{2:s}'.format(hash_val, other, notes))
             else:
-                perks = list(other.split('perks=', 2)[1].split(','))
-                for p in perks:
-                    pn = hash_to_name(p)
-                    perk_names.append(pn)
-                    perk_val_str = perk_val_str + '_' + p
-                for n in perk_names:
-                    perk_str = perk_str + ',' + n
-                perk_str = '&perks=' + perk_str.lstrip(',')    
-
-#                item_hash_perks=hash_val + '-' + perk_val_str
-#                uniq_item[item_hash_perks] += 1;
-                item_hash_perks=item_name + perk_str
-                uniq_item[item_hash_perks] += 1;
-               
-                if (uniq_item[item_hash_perks] > 1):
-                    print('// [duplicate] dimwishlist:item={0:s}{1:s}'.format(item_name, perk_str))
-                    print('// [duplicate] dimwishlist:item={0:s}&{1:s}'.format(hash_val,other))
+                if (uniq_item[item_perks_hash] > 1):
+                    print('// [duplicate {2:d}] dimwishlist:item={0:s}{1:s}'.format(item_name, perk_str, uniq_item[item_perks_hash]))
+                    print('// [duplicate {2:d}] dimwishlist:item={0:s}&{1:s}'.format(hash_val,other, uniq_item[item_perks_hash]))
                 else:
                     print('// dimwishlist:item={0:s}{1:s}'.format(item_name, perk_str))
                     print('dimwishlist:item={0:s}&{1:s}'.format(hash_val,other))
+
         else:
             print(line)
-       
+    
+    print("Unique items summary:", file=sys.stderr)
+    print(uniq_item.items(), file=sys.stderr)
+    print("Cache performance:", file=sys.stderr)
     print(hash_to_name.cache_info(), file=sys.stderr)
-
-    print(uniq_item.items())
 
 if __name__ == '__main__':
     main()
