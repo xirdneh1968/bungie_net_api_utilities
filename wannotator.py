@@ -20,6 +20,7 @@ def handleArgs():
 
     parser = argparse.ArgumentParser(description='annotates wishlist with the text from hashes as comments.')
     parser.add_argument('--file', help='wishlist to process', required=True)
+    parser.add_argument('--duplicates', help='comment out duplicate entries', required=False)
     _args = parser.parse_args()
 
     return _args
@@ -69,13 +70,22 @@ def main():
 
     wishlist = args.file
     uniq_item = Counter()
+    if (args.duplicates):
+        comment_dupes = 1
+    else:
+        comment_dupes = 0
 
     for line in open(wishlist):
 
         line = line.strip()
         match = re.match("^dimwishlist:", line)
         if match:
-            (item, other) = line.split('dimwishlist:',1)[1].split('&',2)
+#            print("DEBUG - line:", line)
+##            (item, other) = line.split('dimwishlist:',1)[1].split('&',2)
+            wl = re.compile(r'^dimwishlist:(item=[0-9-]*)\s*((&perks=|#notes:).*)')
+            dwl = wl.match(line)
+            item = dwl.group(1)
+            other = dwl.group(2)
             hash_val = item.split('item=',2)[1]
 #            print('DEBUG: hash_val({0:s})'.format(hash_val))
             item_name = hash_to_name(hash_val)
@@ -83,11 +93,20 @@ def main():
             perk_names = []
             perk_str = ''
             perk_val_str = ''
-            if (re.match(".*#notes:.*", other)):
-                (perks, notes) = other.split('#notes:', 2)
-                perks = list(perks.split('perks=', 2)[1].split(','))
+##            if (re.match(".*#notes:.*", other)):
+            if (re.match("^&perks=", other)):
+#                print("DEBUG - other >", end="")
+#                print(other, end="")
+#                print("< \n", end="")
+                re_perks = re.compile(r'^&perks=([\d,]*)(#notes:)?(.*)')
+                match_perks = re_perks.match(other)
+#                print("DEBUG - match_perks: ", match_perks, "\n")
+                perks = list(match_perks.group(1).split(','))
+                notes = match_perks.group(3)
+            elif (re.match("^#notes:.*", other)):
+                notes = other.split('#notes:', 2)[1]
             else:
-                perks = list(other.split('perks=', 2)[1].split(','))
+                perks = list(other.split('&perks=', 2)[1].split(','))
 
             for p in perks:
                 pn = hash_to_name(p)
@@ -103,20 +122,27 @@ def main():
             item_perks_hash=hash_val + perk_val_str
             uniq_item[item_perks_hash] += 1;  
 
-            if (re.match(".*#notes:.*", other)):
+            if (re.match("^#notes:.*", other)):
+#                print("DEBUG ^#notes: match other")
                 if (uniq_item[item_perks_hash] > 1):
-                    print('// [duplicate {3:d}] dimwishlist:item={0:s}{1:s}#notes:{2:s}'.format(item_name, perk_str, notes, uniq_item[item_perks_hash]))
-                    print('// [duplicate {3:d}] dimwishlist:item={0:s}&{1:s}{2:s}'.format(hash_val, other, notes, uniq_item[item_perks_hash]))
+                    print('// [duplicate {2:d}] dimwishlist:item={0:s}#notes:{1:s}'.format(item_name, notes, uniq_item[item_perks_hash]))
+                    if (comment_dupes):
+                        print('// [duplicate {2:d}] dimwishlist:item={0:s}#notes:{1:s}'.format(hash_val, notes, uniq_item[item_perks_hash]))
+                    else:
+                        print('dimwishlist:item={0:s}#notes:{1:s}'.format(hash_val, notes ))
                 else:
-                    print('// dimwishlist:item={0:s}{1:s}#notes:{2:s}'.format(item_name, perk_str, notes))
-                    print('dimwishlist:item={0:s}&{1:s}{2:s}'.format(hash_val, other, notes))
+                    print('// dimwishlist:item={0:s}#notes:{1:s}'.format(item_name, notes))
+                    print('dimwishlist:item={0:s}#notes:{1:s}'.format(hash_val, notes))
             else:
                 if (uniq_item[item_perks_hash] > 1):
                     print('// [duplicate {2:d}] dimwishlist:item={0:s}{1:s}'.format(item_name, perk_str, uniq_item[item_perks_hash]))
-                    print('// [duplicate {2:d}] dimwishlist:item={0:s}&{1:s}'.format(hash_val,other, uniq_item[item_perks_hash]))
+                    if (comment_dupes):
+                        print('// [duplicate {2:d}] dimwishlist:item={0:s}{1:s}'.format(hash_val,other, uniq_item[item_perks_hash]))
+                    else:
+                        print('dimwishlist:item={0:s}{1:s}'.format(hash_val, other))
                 else:
                     print('// dimwishlist:item={0:s}{1:s}'.format(item_name, perk_str))
-                    print('dimwishlist:item={0:s}&{1:s}'.format(hash_val,other))
+                    print('dimwishlist:item={0:s}{1:s}'.format(hash_val,other))
 
         else:
             print(line)
